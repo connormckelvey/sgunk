@@ -5,13 +5,64 @@ import (
 	"io/fs"
 	"log"
 	"path/filepath"
+	"sync"
 
 	"github.com/connormckelvey/website/tree"
 	"github.com/spf13/afero"
 )
 
-func Parse(fsys afero.Fs, dir string, root tree.Node, parsers []EntryParser) error {
-	entries, err := afero.ReadDir(fsys, dir)
+type Parser struct {
+	options []ParserOption
+	once    sync.Once
+	siteFS  afero.Fs
+	parsers []EntryParser
+}
+
+type ParserOption interface {
+	Apply(*Parser) error
+}
+
+type ParserOptionFunc func(*Parser) error
+
+func (apply ParserOptionFunc) Apply(p *Parser) error {
+	return apply(p)
+}
+
+func WithSiteFS(siteFS afero.Fs) ParserOptionFunc {
+	return func(p *Parser) error {
+		p.siteFS = siteFS
+		return nil
+	}
+}
+
+func WithEntryParsers(parsers ...EntryParser) ParserOptionFunc {
+	return func(p *Parser) error {
+		p.parsers = append(p.parsers, parsers...)
+		return nil
+	}
+}
+
+func New(opts ...ParserOption) *Parser {
+	return &Parser{
+		options: opts,
+	}
+}
+
+func (p *Parser) Parse(dir string, root tree.Node) error {
+	var err error
+	p.once.Do(func() {
+		for _, opt := range p.options {
+			err = opt.Apply(p)
+			if err != nil {
+				return
+			}
+		}
+	})
+	if err != nil {
+		return err
+	}
+	// todo abstract fs stuff with a ParserContext
+	entries, err := afero.ReadDir(p.siteFS, dir)
 	if err != nil {
 		return err
 	}
@@ -21,7 +72,7 @@ func Parse(fsys afero.Fs, dir string, root tree.Node, parsers []EntryParser) err
 
 		// find parser
 		var parser EntryParser
-		for _, p := range parsers {
+		for _, p := range p.parsers {
 			ok, err := p.Test(path, entry)
 			if err != nil {
 				return err
@@ -30,8 +81,8 @@ func Parse(fsys afero.Fs, dir string, root tree.Node, parsers []EntryParser) err
 				parser = p
 				break
 			}
-
 		}
+
 		if parser == nil {
 			log.Printf("no parser for '%s', skipping...", path)
 			continue
@@ -44,10 +95,10 @@ func Parse(fsys afero.Fs, dir string, root tree.Node, parsers []EntryParser) err
 		if n == nil {
 			continue
 		}
-		root.AppendChild(n)
 
+		root.AppendChild(n)
 		if entry.IsDir() {
-			if err := Parse(fsys, path, n, parsers); err != nil {
+			if err := p.Parse(path, n); err != nil {
 				return err
 			}
 		}

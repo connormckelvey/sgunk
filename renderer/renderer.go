@@ -5,26 +5,61 @@ import (
 	"io"
 	"log"
 	"maps"
+	"sync"
 
 	"github.com/adrg/frontmatter"
 	"github.com/connormckelvey/website/tree"
 	"github.com/connormckelvey/website/util"
-	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 )
 
-type Renderer interface {
-	Test(tree.Node) (bool, error)
-	Props(node tree.Node, context *RenderContext) (map[string]any, error)
-	Open(node tree.Node, context *RenderContext) error
-	Close(node tree.Node, context *RenderContext) error
+type Renderer struct {
+	options []RendererOption
+	once    sync.Once
+
+	renderers []EntryRenderer
 }
 
-func Render(siteFS afero.Fs, buildFS afero.Fs, root tree.Node, renderers []Renderer, context *RenderContext) error {
+type RendererOption interface {
+	Apply(*Renderer) error
+}
 
-	for _, renderer := range renderers {
+type RendererOptionFunc func(*Renderer) error
+
+func (apply RendererOptionFunc) Apply(p *Renderer) error {
+	return apply(p)
+}
+
+func WithEntryRenderers(renderers ...EntryRenderer) RendererOptionFunc {
+	return func(r *Renderer) error {
+		r.renderers = append(r.renderers, renderers...)
+		return nil
+	}
+}
+
+func New(opts ...RendererOption) *Renderer {
+	return &Renderer{
+		options: opts,
+	}
+}
+
+func (r *Renderer) Render(root tree.Node, context *RenderContext) error {
+	var err error
+	r.once.Do(func() {
+		for _, opt := range r.options {
+			err = opt.Apply(r)
+			if err != nil {
+				return
+			}
+		}
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, renderer := range r.renderers {
 		ok, err := renderer.Test(root)
 		if err != nil {
 			return err
@@ -36,8 +71,9 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root tree.Node, renderers []Rende
 		if err := renderer.Open(root, context); err != nil {
 			return err
 		}
+
 		for _, child := range root.Children() {
-			if err := Render(siteFS, buildFS, child, renderers, context); err != nil {
+			if err := r.Render(child, context); err != nil {
 				return err
 			}
 		}
@@ -88,8 +124,7 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root tree.Node, renderers []Rende
 			maps.Copy(props, p)
 
 			var templated bytes.Buffer
-			ev := NewEvaluator(afero.NewIOFS(siteFS))
-			if err := ev.Render(bytes.NewReader(content), root.Path(), props, &templated); err != nil {
+			if err := context.templater.Render(bytes.NewReader(content), root.Path(), props, &templated); err != nil {
 				return err
 			}
 
@@ -124,91 +159,6 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root tree.Node, renderers []Rende
 			return err
 		}
 		break
-	}
-	return nil
-}
-
-type DefaultRenderer struct {
-}
-
-func (r *DefaultRenderer) Props(node tree.Node, context *RenderContext) (map[string]any, error) {
-	if node.IsDir() {
-		return nil, nil
-	}
-	source, err := context.Source(node)
-	if err != nil {
-		return nil, err
-	}
-
-	var fm tree.PageFrontMatter
-	if _, err := frontmatter.Parse(bytes.NewReader(source), &fm); err != nil {
-		return nil, err
-	}
-	return map[string]any{
-		"title":    fm.Title,
-		"meta":     fm.Meta,
-		"links":    fm.Links,
-		"template": fm.Template,
-	}, nil
-}
-
-func (r *DefaultRenderer) Test(node tree.Node) (bool, error) {
-	switch node.(type) {
-	case *tree.DefaultDir, *tree.DefaultPage, *tree.Site:
-		return true, nil
-	}
-	return false, nil
-}
-
-func (r *DefaultRenderer) openDefaultDir(node *tree.DefaultDir, context *RenderContext) error {
-	log.Println("render blog", node.Path())
-	if err := context.MkdirAll(node.Path(), 0755); err != nil {
-		return err
-	}
-	context.PushDir(node.Path())
-	return nil
-}
-
-func (r *DefaultRenderer) closeDefaultDir(node *tree.DefaultDir, context *RenderContext) error {
-	context.PopDir()
-	return nil
-}
-
-func (r *DefaultRenderer) openDefaultPage(node *tree.DefaultPage, context *RenderContext) error {
-	log.Println("render post", node.Path())
-
-	_, err := context.CreateFile(node.Parts.Slug + ".html")
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *DefaultRenderer) closeDefaultPage(node *tree.DefaultPage, context *RenderContext) error {
-	popped := context.PopFile()
-	return popped.Close()
-}
-
-func (r *DefaultRenderer) Open(node tree.Node, context *RenderContext) error {
-	switch n := node.(type) {
-	case *tree.DefaultDir:
-		log.Println("open dir", n.Path())
-		return r.openDefaultDir(n, context)
-	case *tree.DefaultPage:
-		log.Println("open page", n.Path())
-		return r.openDefaultPage(n, context)
-	}
-	return nil
-}
-
-func (r *DefaultRenderer) Close(node tree.Node, context *RenderContext) error {
-	switch n := node.(type) {
-	case *tree.DefaultDir:
-		log.Println("close dir", n.Path())
-		return r.closeDefaultDir(n, context)
-	case *tree.DefaultPage:
-		log.Println("close page", n.Path())
-		return r.closeDefaultPage(n, context)
 	}
 	return nil
 }

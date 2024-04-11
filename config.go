@@ -1,6 +1,10 @@
-package project
+package ssg
 
-import "gopkg.in/yaml.v3"
+import (
+	"encoding/json"
+
+	"gopkg.in/yaml.v3"
+)
 
 type MiddlewareConfig struct {
 	Path      string `yaml:"path"`
@@ -48,4 +52,10 @@ type ProjectConfig struct {
 	Theme ThemeConfig       `yaml:"theme"`
 	Build BuildConfig       `yaml:"build"`
 	Uses  []ExtensionConfig `yaml:"uses"`
+}
+
+var configFiles = map[string]func([]byte, any) error{
+	"project.json": json.Unmarshal,
+	"project.yml":  yaml.Unmarshal,
+	"project.yaml": yaml.Unmarshal,
 }

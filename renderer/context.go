@@ -16,15 +16,41 @@ type RenderContext struct {
 	dirstack  []string
 	openFiles []afero.File
 	props     []func(last map[string]any) map[string]any
+	templater *Evaluator
 }
 
-func NewRenderContext(siteFS afero.Fs, themeFS afero.Fs, buildFS afero.Fs) *RenderContext {
-	return &RenderContext{
-		siteFS:   siteFS,
-		themeFS:  themeFS,
-		buildFS:  buildFS,
+type RenderContextOption interface {
+	Apply(*RenderContext)
+}
+
+type RenderContextOptionFunc func(*RenderContext)
+
+func (apply RenderContextOptionFunc) Apply(r *RenderContext) {
+	apply(r)
+}
+
+func WithSiteFS(siteFS afero.Fs) RenderContextOptionFunc {
+	return func(r *RenderContext) {
+		r.siteFS = siteFS
+		r.templater = NewEvaluator(afero.NewIOFS(siteFS))
+	}
+}
+func WithFS(siteFS afero.Fs, themeFS afero.Fs, buildFS afero.Fs) RenderContextOptionFunc {
+	return func(r *RenderContext) {
+		WithSiteFS(siteFS)(r)
+		r.themeFS = themeFS
+		r.buildFS = buildFS
+	}
+}
+
+func NewRenderContext(opts ...RenderContextOption) *RenderContext {
+	rc := &RenderContext{
 		dirstack: []string{},
 	}
+	for _, opt := range opts {
+		opt.Apply(rc)
+	}
+	return rc
 }
 
 func (rc *RenderContext) Source(node tree.Node) ([]byte, error) {
