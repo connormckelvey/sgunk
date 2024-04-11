@@ -6,7 +6,8 @@ post:
         - ML
         - LLM
         - ChatGPT
-template: blog-post.html
+page:
+    template: blog-post.html
 ---
 
 

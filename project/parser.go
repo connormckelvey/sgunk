@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/adrg/frontmatter"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -364,24 +365,18 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root Node, renderers []Renderer, 
 			if err := md.Convert(templated.Bytes(), &compiledMarkdown); err != nil {
 				return err
 			}
-
+			spew.Dump(fm)
 			if fm.Page.Template == "" {
 				_, err := io.Copy(currentFile, &compiledMarkdown)
 				return err
 			}
 
-			themeFile, err := context.themeFS.Open(fm.Page.Template)
+			b, err := WrapTheme(context.themeFS, fm.Page.Template, compiledMarkdown.Bytes(), props)
 			if err != nil {
 				return err
 			}
-			defer themeFile.Close()
 
-			ev = NewEvaluator(afero.NewIOFS(context.themeFS))
-			themeProps := map[string]any{
-				"$outlet": compiledMarkdown.String(),
-			}
-			maps.Copy(props, themeProps)
-			if err := ev.Render(themeFile, root.Path(), props, currentFile); err != nil {
+			if _, err := currentFile.Write(b); err != nil {
 				return err
 			}
 

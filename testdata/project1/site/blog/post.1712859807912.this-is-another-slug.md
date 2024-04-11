@@ -5,7 +5,8 @@ post:
         - Parsers
         - Tooling
         
-template: blog-post.html
+page:
+    template: blog-post.html
 ---
 
 
