@@ -15,7 +15,6 @@ type RenderContext struct {
 	buildFS   afero.Fs
 	dirstack  []string
 	openFiles []afero.File
-	props     []func(last map[string]any) map[string]any
 	templater *Evaluator
 }
 

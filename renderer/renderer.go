@@ -3,7 +3,6 @@ package renderer
 import (
 	"bytes"
 	"io"
-	"log"
 	"maps"
 	"sync"
 
@@ -127,7 +126,6 @@ func (r *Renderer) Render(root tree.Node, context *RenderContext) error {
 			if err := context.templater.Render(bytes.NewReader(content), root.Path(), props, &templated); err != nil {
 				return err
 			}
-
 			var compiledMarkdown bytes.Buffer
 			md := goldmark.New(
 				goldmark.WithExtensions(extension.GFM),
@@ -140,21 +138,14 @@ func (r *Renderer) Render(root tree.Node, context *RenderContext) error {
 				_, err := io.Copy(currentFile, &compiledMarkdown)
 				return err
 			}
-			log.Println("MD", compiledMarkdown.String())
 			b, err := WrapTheme(context.themeFS, fm.Page.Template, compiledMarkdown.Bytes(), props)
 			if err != nil {
 				return err
 			}
-
 			if _, err := currentFile.Write(b); err != nil {
 				return err
 			}
-
-			// if _, err := currentFile.Write(content); err != nil {
-			// 	return err
-			// }
 		}
-
 		if err := renderer.Close(root, context); err != nil {
 			return err
 		}

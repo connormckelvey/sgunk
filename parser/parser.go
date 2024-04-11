@@ -61,7 +61,7 @@ func (p *Parser) Parse(dir string, root tree.Node) error {
 	if err != nil {
 		return err
 	}
-	// todo abstract fs stuff with a ParserContext
+
 	entries, err := afero.ReadDir(p.siteFS, dir)
 	if err != nil {
 		return err

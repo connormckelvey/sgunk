@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"bytes"
-	"log"
 	"maps"
 
 	"github.com/adrg/frontmatter"
@@ -10,7 +9,6 @@ import (
 )
 
 func WrapTheme(themeFs afero.Fs, themeFile string, content []byte, props map[string]any) ([]byte, error) {
-	log.Println("wrapping", string(content))
 	file, err := themeFs.Open(themeFile)
 	if err != nil {
 		return nil, err

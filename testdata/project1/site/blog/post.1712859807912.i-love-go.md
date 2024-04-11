@@ -1,6 +1,6 @@
 ---
 post:
-    title: I lobe go
+    title: I love go
     tags: 
         - Parsers
         - Tooling

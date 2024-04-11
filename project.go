@@ -2,6 +2,7 @@ package ssg
 
 import (
 	"errors"
+	"log"
 	"os"
 	"path/filepath"
 
@@ -120,6 +121,8 @@ func loadConfigFile(projectFS afero.Fs) (*ProjectConfig, error) {
 }
 
 func (p *Project) Generate() error {
+	var success bool
+
 	for _, opt := range p.options {
 		if err := opt.Apply(p); err != nil {
 			return err
@@ -130,17 +133,41 @@ func (p *Project) Generate() error {
 	if d := p.config.Site.Dir; d != "" {
 		siteDir = d
 	}
-	siteFS := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(p.workDir, siteDir))
+	siteDir = filepath.Join(p.workDir, siteDir)
+	siteFS := afero.NewBasePathFs(afero.NewOsFs(), siteDir)
+
 	themeDir := "theme"
 	if d := p.config.Theme.Dir; d != "" {
 		themeDir = d
 	}
-	themeFS := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(p.workDir, themeDir))
+	themeDir = filepath.Join(p.workDir, themeDir)
+	themeFS := afero.NewBasePathFs(afero.NewOsFs(), themeDir)
+
 	buildDir := "_build"
 	if d := p.config.Build.Dir; d != "" {
 		buildDir = d
 	}
-	buildFS := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(p.workDir, buildDir))
+	buildDir = filepath.Join(p.workDir, buildDir)
+	buildFS := afero.NewBasePathFs(afero.NewOsFs(), buildDir)
+
+	err := os.Rename(buildDir, buildDir+".bk")
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	defer func() {
+		if !success {
+			if err := os.Rename(buildDir, buildDir+".failed"); err != nil {
+				log.Println(err)
+			}
+			if err := os.Rename(buildDir+".bk", buildDir); err != nil {
+				log.Println(err)
+			}
+		}
+	}()
+
+	if err := os.MkdirAll(buildDir, 0755); err != nil {
+		return err
+	}
 
 	if err := parser.WithSiteFS(siteFS)(p.parser); err != nil {
 		return err
@@ -195,6 +222,8 @@ func (p *Project) Generate() error {
 	if err := p.renderer.Render(&site, context); err != nil {
 		return err
 	}
+
+	success = true
 	return nil
 }
 

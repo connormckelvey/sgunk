@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"bytes"
-	"log"
 	"path/filepath"
 	"time"
 
@@ -46,7 +45,6 @@ func (r *BlogRenderer) Props(node tree.Node, context *RenderContext) (map[string
 }
 
 func (f *BlogRenderer) openBlogNode(node *tree.BlogNode, context *RenderContext) error {
-	log.Println("render blog", node.Root)
 	if err := context.MkdirAll(node.Root, 0755); err != nil {
 		return err
 	}
@@ -54,14 +52,12 @@ func (f *BlogRenderer) openBlogNode(node *tree.BlogNode, context *RenderContext)
 	return nil
 }
 
-func (*BlogRenderer) closeBlogNode(node *tree.BlogNode, context *RenderContext) error {
+func (*BlogRenderer) closeBlogNode(_ *tree.BlogNode, context *RenderContext) error {
 	context.PopDir()
 	return nil
 }
 
 func (f *BlogRenderer) openBlogPostNode(node *tree.BlogPostNode, context *RenderContext) error {
-	log.Println("render post", node.Path())
-
 	datePath := time.Now().Format("2006/01/02")
 	if err := context.MkdirAll(datePath, 0755); err != nil {
 		return err
@@ -75,7 +71,7 @@ func (f *BlogRenderer) openBlogPostNode(node *tree.BlogPostNode, context *Render
 	return nil
 }
 
-func (f *BlogRenderer) closeBlogPostNode(node *tree.BlogPostNode, context *RenderContext) error {
+func (f *BlogRenderer) closeBlogPostNode(_ *tree.BlogPostNode, context *RenderContext) error {
 	popped := context.PopFile()
 	return popped.Close()
 }
@@ -83,7 +79,6 @@ func (f *BlogRenderer) closeBlogPostNode(node *tree.BlogPostNode, context *Rende
 type PropsBuilder func(props map[string]any)
 
 func (r *BlogRenderer) Open(node tree.Node, context *RenderContext) error {
-	// TODO handle entering == false for changing anything after children have been rendered
 	switch n := node.(type) {
 	case *tree.BlogNode:
 		return r.openBlogNode(n, context)
@@ -96,7 +91,6 @@ func (r *BlogRenderer) Open(node tree.Node, context *RenderContext) error {
 }
 
 func (r *BlogRenderer) Close(node tree.Node, context *RenderContext) error {
-	// TODO handle entering == false for changing anything after children have been rendered
 	switch n := node.(type) {
 	case *tree.BlogNode:
 		return r.closeBlogNode(n, context)

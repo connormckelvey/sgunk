@@ -2,7 +2,6 @@ package renderer
 
 import (
 	"bytes"
-	"log"
 
 	"github.com/adrg/frontmatter"
 	"github.com/connormckelvey/website/tree"
@@ -41,7 +40,6 @@ func (r *DefaultRenderer) Test(node tree.Node) (bool, error) {
 }
 
 func (r *DefaultRenderer) openDefaultDir(node *tree.DefaultDir, context *RenderContext) error {
-	log.Println("render blog", node.Path())
 	if err := context.MkdirAll(node.Path(), 0755); err != nil {
 		return err
 	}
@@ -49,14 +47,12 @@ func (r *DefaultRenderer) openDefaultDir(node *tree.DefaultDir, context *RenderC
 	return nil
 }
 
-func (r *DefaultRenderer) closeDefaultDir(node *tree.DefaultDir, context *RenderContext) error {
+func (r *DefaultRenderer) closeDefaultDir(_ *tree.DefaultDir, context *RenderContext) error {
 	context.PopDir()
 	return nil
 }
 
 func (r *DefaultRenderer) openDefaultPage(node *tree.DefaultPage, context *RenderContext) error {
-	log.Println("render post", node.Path())
-
 	_, err := context.CreateFile(node.Parts.Slug + ".html")
 	if err != nil {
 		return err
@@ -64,7 +60,7 @@ func (r *DefaultRenderer) openDefaultPage(node *tree.DefaultPage, context *Rende
 	return nil
 }
 
-func (r *DefaultRenderer) closeDefaultPage(node *tree.DefaultPage, context *RenderContext) error {
+func (r *DefaultRenderer) closeDefaultPage(_ *tree.DefaultPage, context *RenderContext) error {
 	popped := context.PopFile()
 	return popped.Close()
 }
@@ -72,10 +68,8 @@ func (r *DefaultRenderer) closeDefaultPage(node *tree.DefaultPage, context *Rend
 func (r *DefaultRenderer) Open(node tree.Node, context *RenderContext) error {
 	switch n := node.(type) {
 	case *tree.DefaultDir:
-		log.Println("open dir", n.Path())
 		return r.openDefaultDir(n, context)
 	case *tree.DefaultPage:
-		log.Println("open page", n.Path())
 		return r.openDefaultPage(n, context)
 	}
 	return nil
@@ -84,10 +78,8 @@ func (r *DefaultRenderer) Open(node tree.Node, context *RenderContext) error {
 func (r *DefaultRenderer) Close(node tree.Node, context *RenderContext) error {
 	switch n := node.(type) {
 	case *tree.DefaultDir:
-		log.Println("close dir", n.Path())
 		return r.closeDefaultDir(n, context)
 	case *tree.DefaultPage:
-		log.Println("close page", n.Path())
 		return r.closeDefaultPage(n, context)
 	}
 	return nil
