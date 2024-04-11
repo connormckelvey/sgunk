@@ -1,4 +1,4 @@
-package project
+package util
 
 import "encoding/json"
 
