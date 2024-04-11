@@ -1,11 +1,10 @@
 ---
 post:
-    title: Why LLMs aren't so great
+    title: I lobe go
     tags: 
-        - AI
-        - ML
-        - LLM
-        - ChatGPT
+        - Parsers
+        - Tooling
+        
 template: blog-post.html
 ---
 
