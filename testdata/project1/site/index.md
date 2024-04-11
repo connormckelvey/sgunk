@@ -1,9 +1,9 @@
 ---
-title: Home
-tags: []
-desc: Connor McKelvey's Site
+page:
+    title: Home
+    desc: Connor McKelvey's Site
 ---
 
-# <% metadata.title %>
+# <% page.title %>
 
 <% "Hello World" %>

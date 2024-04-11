@@ -83,6 +83,7 @@ func parsePage(path string, entry *FileEntry) (*BasePage, error) {
 }
 
 type PageFrontMatter struct {
+	Title    string            `yaml:"title"`
 	Meta     []*PageMetaValue  `yaml:"meta"`
 	Links    []*PageLinksValue `yaml:"links"`
 	Template string            `yaml:"template"`

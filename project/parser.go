@@ -17,6 +17,7 @@ import (
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
+	"github.com/yuin/goldmark/renderer/html"
 )
 
 type WalkState int
@@ -310,14 +311,16 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root Node, renderers []Renderer, 
 				return err
 			}
 
-			var fm PageFrontMatter
+			var fm struct {
+				Page PageFrontMatter `yaml:"page"`
+			}
 			content, err := frontmatter.Parse(bytes.NewReader(source), &fm)
 			if err != nil {
 				return err
 			}
 
 			var metaProps []map[string]any
-			for _, meta := range fm.Meta {
+			for _, meta := range fm.Page.Meta {
 				m, err := MarshalMap(meta)
 				if err != nil {
 					return err
@@ -326,7 +329,7 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root Node, renderers []Renderer, 
 			}
 
 			var linkProps []map[string]any
-			for _, link := range fm.Links {
+			for _, link := range fm.Page.Links {
 				l, err := MarshalMap(link)
 				if err != nil {
 					return err
@@ -334,9 +337,12 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root Node, renderers []Renderer, 
 				linkProps = append(linkProps, l)
 			}
 			props := map[string]any{
-				"meta":     metaProps,
-				"links":    linkProps,
-				"template": fm.Template,
+				"page": map[string]any{
+					"meta":     metaProps,
+					"links":    linkProps,
+					"template": fm.Page.Template,
+					"title":    fm.Page.Title,
+				},
 			}
 			p, err := renderer.Props(root, context)
 			if err != nil {
@@ -351,17 +357,20 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root Node, renderers []Renderer, 
 			}
 
 			var compiledMarkdown bytes.Buffer
-			md := goldmark.New(goldmark.WithExtensions(extension.GFM))
+			md := goldmark.New(
+				goldmark.WithExtensions(extension.GFM),
+				goldmark.WithRendererOptions(html.WithUnsafe()),
+			)
 			if err := md.Convert(templated.Bytes(), &compiledMarkdown); err != nil {
 				return err
 			}
 
-			if fm.Template == "" {
+			if fm.Page.Template == "" {
 				_, err := io.Copy(currentFile, &compiledMarkdown)
 				return err
 			}
 
-			themeFile, err := context.themeFS.Open(fm.Template)
+			themeFile, err := context.themeFS.Open(fm.Page.Template)
 			if err != nil {
 				return err
 			}
@@ -369,10 +378,10 @@ func Render(siteFS afero.Fs, buildFS afero.Fs, root Node, renderers []Renderer, 
 
 			ev = NewEvaluator(afero.NewIOFS(context.themeFS))
 			themeProps := map[string]any{
-				"$props":  props,
 				"$outlet": compiledMarkdown.String(),
 			}
-			if err := ev.Render(themeFile, root.Path(), themeProps, currentFile); err != nil {
+			maps.Copy(props, themeProps)
+			if err := ev.Render(themeFile, root.Path(), props, currentFile); err != nil {
 				return err
 			}
 
@@ -406,6 +415,7 @@ func (r *DefaultRenderer) Props(node Node, context *RenderContext) (map[string]a
 		return nil, err
 	}
 	return map[string]any{
+		"title":    fm.Title,
 		"meta":     fm.Meta,
 		"links":    fm.Links,
 		"template": fm.Template,
@@ -420,12 +430,43 @@ func (r *DefaultRenderer) Test(node Node) (bool, error) {
 	return false, nil
 }
 
+func (r *DefaultRenderer) openDefaultDir(node *DefaultDir, context *RenderContext) error {
+	log.Println("render blog", node.Path())
+	if err := context.MkdirAll(node.Path(), 0755); err != nil {
+		return err
+	}
+	context.PushDir(node.Path())
+	return nil
+}
+
+func (r *DefaultRenderer) closeDefaultDir(node *DefaultDir, context *RenderContext) error {
+	context.PopDir(node.Path())
+	return nil
+}
+
+func (r *DefaultRenderer) openDefaultPage(node *DefaultPage, context *RenderContext) error {
+	log.Println("render post", node.path)
+
+	_, err := context.CreateFile(node.parts.Slug + ".html")
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (r *DefaultRenderer) closeDefaultPage(node *DefaultPage, context *RenderContext) error {
+	popped := context.PopFile()
+	return popped.Close()
+}
+
 func (r *DefaultRenderer) Open(node Node, context *RenderContext) error {
 	switch n := node.(type) {
 	case *DefaultDir:
 		log.Println("open dir", n.Path())
+		return r.openDefaultDir(n, context)
 	case *DefaultPage:
 		log.Println("open page", n.Path())
+		return r.openDefaultPage(n, context)
 	}
 	return nil
 }
@@ -434,8 +475,10 @@ func (r *DefaultRenderer) Close(node Node, context *RenderContext) error {
 	switch n := node.(type) {
 	case *DefaultDir:
 		log.Println("close dir", n.Path())
+		return r.closeDefaultDir(n, context)
 	case *DefaultPage:
 		log.Println("close page", n.Path())
+		return r.closeDefaultPage(n, context)
 	}
 	return nil
 }
