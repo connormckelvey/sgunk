@@ -2,19 +2,23 @@ package main
 
 import (
 	"log"
+	"os"
 
 	"github.com/connormckelvey/sgunk"
 	"github.com/connormckelvey/sgunk/extension/blog"
 )
 
 func main() {
+	wd, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
 	p := sgunk.New(
-		sgunk.WithWorkDir("testdata/project1"),
+		sgunk.WithWorkDir(wd),
 		sgunk.WithExtensions(&blog.Extension{}),
 	)
 
-	err := p.Generate()
-	if err != nil {
+	if err := p.Generate(); err != nil {
 		log.Fatal(err)
 	}
 }
