@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"dario.cat/mergo"
-	"github.com/connormckelvey/ssg/util"
+	"github.com/connormckelvey/sgunk/util"
 )
 
 type NodeAttributes struct {

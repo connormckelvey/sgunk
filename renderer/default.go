@@ -1,7 +1,7 @@
 package renderer
 
 import (
-	"github.com/connormckelvey/ssg/tree"
+	"github.com/connormckelvey/sgunk/tree"
 )
 
 type DefaultRenderer struct {

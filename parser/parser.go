@@ -4,7 +4,7 @@ import (
 	"log"
 	"path/filepath"
 
-	"github.com/connormckelvey/ssg/tree"
+	"github.com/connormckelvey/sgunk/tree"
 	"github.com/spf13/afero"
 )
 

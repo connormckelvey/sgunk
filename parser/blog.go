@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/connormckelvey/ssg/tree"
+	"github.com/connormckelvey/sgunk/tree"
 )
 
 type BlogEntryParser struct {

@@ -1,12 +1,12 @@
-package ssg
+package sgunk
 
 import (
 	"log"
 	"os"
 	"path/filepath"
 
-	"github.com/connormckelvey/ssg/parser"
-	"github.com/connormckelvey/ssg/renderer"
+	"github.com/connormckelvey/sgunk/parser"
+	"github.com/connormckelvey/sgunk/renderer"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/afero"
 )

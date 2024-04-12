@@ -1,4 +1,4 @@
-package ssg
+package sgunk
 
 import (
 	"encoding/json"

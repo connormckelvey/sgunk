@@ -4,7 +4,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/connormckelvey/ssg/tree"
+	"github.com/connormckelvey/sgunk/tree"
 )
 
 type BlogRenderer struct {

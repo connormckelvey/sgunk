@@ -1,4 +1,4 @@
-module github.com/connormckelvey/ssg
+module github.com/connormckelvey/sgunk
 
 go 1.22.1
 

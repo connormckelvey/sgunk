@@ -5,7 +5,7 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/connormckelvey/ssg/tree"
+	"github.com/connormckelvey/sgunk/tree"
 )
 
 type DefaultParser struct {

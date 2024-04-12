@@ -5,7 +5,7 @@ import (
 	"io"
 
 	"github.com/adrg/frontmatter"
-	"github.com/connormckelvey/ssg/tree"
+	"github.com/connormckelvey/sgunk/tree"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
