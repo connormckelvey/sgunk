@@ -13,16 +13,15 @@ import (
 	"github.com/connormckelvey/tmplrun/parser"
 )
 
-type Evaluator struct {
+type Templater struct {
 	fs fs.FS
 }
 
-func NewEvaluator(fsys fs.FS) *Evaluator {
-	return &Evaluator{fsys}
+func NewTemplater(fsys fs.FS) *Templater {
+	return &Templater{fsys}
 }
 
-// Render renders the template specified by the input and writes the result to the given writer.
-func (ev *Evaluator) Render(source io.Reader, currentFile string, props map[string]any, w io.Writer) error {
+func (ev *Templater) Render(source io.Reader, currentFile string, props map[string]any, w io.Writer) error {
 	doc, err := ev.parse(source)
 	if err != nil {
 		return err
@@ -34,13 +33,13 @@ func (ev *Evaluator) Render(source io.Reader, currentFile string, props map[stri
 	return nil
 }
 
-func (tr *Evaluator) parse(r io.Reader) (*ast.Document, error) {
+func (tr *Templater) parse(r io.Reader) (*ast.Document, error) {
 	lex := lexer.New(r)
 	par := parser.New(lex)
 	return par.Parse()
 }
 
-func (tr *Evaluator) render(w io.Writer, currentFile string, doc *ast.Document, props map[string]any) error {
+func (tr *Templater) render(w io.Writer, currentFile string, doc *ast.Document, props map[string]any) error {
 	hooks := &hooks{
 		tr:          tr,
 		currentFile: currentFile,
@@ -59,7 +58,7 @@ func (tr *Evaluator) render(w io.Writer, currentFile string, doc *ast.Document, 
 }
 
 type hooks struct {
-	tr          *Evaluator
+	tr          *Templater
 	currentFile string
 }
 

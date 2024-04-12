@@ -23,7 +23,7 @@ func WrapTheme(themeFs afero.Fs, themeFile string, content []byte, props map[str
 		return nil, err
 	}
 
-	ev := NewEvaluator(afero.NewIOFS(themeFs))
+	ev := NewTemplater(afero.NewIOFS(themeFs))
 
 	var w bytes.Buffer
 	newProps := maps.Clone(props)

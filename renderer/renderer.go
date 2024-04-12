@@ -18,7 +18,7 @@ type Renderer struct {
 	themeFS   afero.Fs
 	buildFS   afero.Fs
 	renderers []EntryRenderer
-	templater *Evaluator
+	templater *Templater
 	markdown  goldmark.Markdown
 }
 
@@ -42,7 +42,7 @@ func WithEntryRenderers(renderers ...EntryRenderer) RendererOptionFunc {
 func WithSiteFS(siteFS afero.Fs) RendererOptionFunc {
 	return func(r *Renderer) error {
 		r.siteFS = siteFS
-		r.templater = NewEvaluator(afero.NewIOFS(siteFS))
+		r.templater = NewTemplater(afero.NewIOFS(siteFS))
 		return nil
 	}
 }
