@@ -1,15 +1,12 @@
 package ssg
 
 import (
-	"errors"
 	"log"
 	"os"
 	"path/filepath"
 
-	"github.com/connormckelvey/website/parser"
-	"github.com/connormckelvey/website/renderer"
-	"github.com/connormckelvey/website/tree"
-	"github.com/davecgh/go-spew/spew"
+	"github.com/connormckelvey/ssg/parser"
+	"github.com/connormckelvey/ssg/renderer"
 	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/afero"
 )
@@ -75,49 +72,22 @@ func New(opts ...ProjectOption) *Project {
 		parser:   parser.New(),
 		renderer: renderer.New(),
 	}
-
-	// p := parser.New(
-	// // parser.WithSiteFS(siteDir),
-	// // parser.WithEntryParsers(
-	// // 	parser.NewBlogEntryParser("blog"),
-	// // 	&parser.DefaultPageParser{},
-	// // ),
-	// )
-
-	// r := renderer.New(
-	// 	renderer.WithEntryRenderers(
-	// 		&renderer.BlogRenderer{},
-	// 		&renderer.DefaultRenderer{},
-	// 	),
-	// )
-	// context := renderer.NewRenderContext(
-	// 	renderer.WithFS(siteDir, themeDir, buildDir),
-	// )
-	// err = r.Render(&site, context)
 }
 
-func loadConfigFile(projectFS afero.Fs) (*ProjectConfig, error) {
-	l, err := afero.ReadDir(projectFS, ".")
-	if err != nil {
-		panic(err)
-	}
-	spew.Dump(l)
-	for name, unmarshal := range configFiles {
-		b, err := afero.ReadFile(projectFS, name)
-		if err != nil && os.IsNotExist(err) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		var c ProjectConfig
-		if err := unmarshal(b, &c); err != nil {
-			return nil, err
-		}
-		return &c, nil
-	}
+const (
+	defaultSiteDir  = "site"
+	defaultThemeDir = "theme"
+	defaultBuildDir = "_build"
+)
 
-	return nil, errors.New("config file not found")
+func (p *Project) getConfigDir(c DirConfig, defaultDir string) (string, afero.Fs) {
+	dir := defaultDir
+	if d := c.GetDir(); d != "" {
+		dir = d
+	}
+	dir = filepath.Join(p.workDir, defaultDir)
+	fsys := afero.NewBasePathFs(afero.NewOsFs(), dir)
+	return dir, fsys
 }
 
 func (p *Project) Generate() error {
@@ -129,37 +99,24 @@ func (p *Project) Generate() error {
 		}
 	}
 
-	siteDir := "site"
-	if d := p.config.Site.Dir; d != "" {
-		siteDir = d
-	}
-	siteDir = filepath.Join(p.workDir, siteDir)
-	siteFS := afero.NewBasePathFs(afero.NewOsFs(), siteDir)
-
-	themeDir := "theme"
-	if d := p.config.Theme.Dir; d != "" {
-		themeDir = d
-	}
-	themeDir = filepath.Join(p.workDir, themeDir)
-	themeFS := afero.NewBasePathFs(afero.NewOsFs(), themeDir)
-
-	buildDir := "_build"
-	if d := p.config.Build.Dir; d != "" {
-		buildDir = d
-	}
-	buildDir = filepath.Join(p.workDir, buildDir)
-	buildFS := afero.NewBasePathFs(afero.NewOsFs(), buildDir)
-
+	_, siteFS := p.getConfigDir(&p.config.Site, defaultSiteDir)
+	_, themeFS := p.getConfigDir(&p.config.Theme, defaultThemeDir)
+	buildDir, buildFS := p.getConfigDir(&p.config.Build, defaultBuildDir)
 	err := os.Rename(buildDir, buildDir+".bk")
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+
 	defer func() {
 		if !success {
 			if err := os.Rename(buildDir, buildDir+".failed"); err != nil {
 				log.Println(err)
 			}
 			if err := os.Rename(buildDir+".bk", buildDir); err != nil {
+				log.Println(err)
+			}
+		} else {
+			if err := os.RemoveAll(buildDir + ".bk"); err != nil {
 				log.Println(err)
 			}
 		}
@@ -170,6 +127,10 @@ func (p *Project) Generate() error {
 	}
 
 	if err := parser.WithSiteFS(siteFS)(p.parser); err != nil {
+		return err
+	}
+
+	if err := renderer.WithFS(siteFS, themeFS, buildFS)(p.renderer); err != nil {
 		return err
 	}
 
@@ -210,21 +171,15 @@ func (p *Project) Generate() error {
 		return err
 	}
 
-	site := tree.Site{
-		BaseNode: tree.NewBaseNode("", true),
-	}
-	if err := p.parser.Parse(".", &site); err != nil {
+	site, err := p.parser.Parse()
+	if err != nil {
 		return err
 	}
-	context := renderer.NewRenderContext(
-		renderer.WithFS(siteFS, themeFS, buildFS),
-	)
-	if err := p.renderer.Render(&site, context); err != nil {
+
+	if err := p.renderer.Render(site); err != nil {
 		return err
 	}
 
 	success = true
 	return nil
 }
-
-// func NewGenerator(config *project.ProjectConfig)

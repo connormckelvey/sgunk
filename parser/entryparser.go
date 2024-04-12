@@ -3,7 +3,7 @@ package parser
 import (
 	"io/fs"
 
-	"github.com/connormckelvey/website/tree"
+	"github.com/connormckelvey/ssg/tree"
 )
 
 type EntryParser interface {

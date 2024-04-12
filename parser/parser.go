@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/connormckelvey/website/tree"
+	"github.com/connormckelvey/ssg/tree"
 	"github.com/spf13/afero"
 )
 
@@ -48,20 +48,25 @@ func New(opts ...ParserOption) *Parser {
 	}
 }
 
-func (p *Parser) Parse(dir string, root tree.Node) error {
-	var err error
-	p.once.Do(func() {
-		for _, opt := range p.options {
-			err = opt.Apply(p)
-			if err != nil {
-				return
-			}
+func (p *Parser) Parse() (*tree.Site, error) {
+	for _, opt := range p.options {
+		err := opt.Apply(p)
+		if err != nil {
+			return nil, err
 		}
-	})
-	if err != nil {
-		return err
 	}
 
+	site := &tree.Site{
+		BaseNode: tree.NewBaseNode("", true),
+	}
+
+	if err := p.parse(".", site); err != nil {
+		return nil, err
+	}
+	return site, nil
+}
+
+func (p *Parser) parse(dir string, root tree.Node) error {
 	entries, err := afero.ReadDir(p.siteFS, dir)
 	if err != nil {
 		return err
@@ -72,13 +77,13 @@ func (p *Parser) Parse(dir string, root tree.Node) error {
 
 		// find parser
 		var parser EntryParser
-		for _, p := range p.parsers {
-			ok, err := p.Test(path, entry)
+		for _, pp := range p.parsers {
+			ok, err := pp.Test(path, entry)
 			if err != nil {
 				return err
 			}
 			if ok {
-				parser = p
+				parser = pp
 				break
 			}
 		}
@@ -98,7 +103,7 @@ func (p *Parser) Parse(dir string, root tree.Node) error {
 
 		root.AppendChild(n)
 		if entry.IsDir() {
-			if err := p.Parse(path, n); err != nil {
+			if err := p.parse(path, n); err != nil {
 				return err
 			}
 		}

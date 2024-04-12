@@ -1,8 +1,4 @@
 version: v1
-site:
-  dir: site # optional default site
-theme:
-  dir: theme
 uses:
   - extension: blog
     path: blog

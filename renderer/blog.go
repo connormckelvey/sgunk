@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/adrg/frontmatter"
-	"github.com/connormckelvey/website/tree"
+	"github.com/connormckelvey/ssg/tree"
 )
 
 type BlogRenderer struct {

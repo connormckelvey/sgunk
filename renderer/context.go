@@ -5,51 +5,15 @@ import (
 	"io/fs"
 	"path/filepath"
 
-	"github.com/connormckelvey/website/tree"
+	"github.com/connormckelvey/ssg/tree"
 	"github.com/spf13/afero"
 )
 
 type RenderContext struct {
 	siteFS    afero.Fs
-	themeFS   afero.Fs
 	buildFS   afero.Fs
 	dirstack  []string
 	openFiles []afero.File
-	templater *Evaluator
-}
-
-type RenderContextOption interface {
-	Apply(*RenderContext)
-}
-
-type RenderContextOptionFunc func(*RenderContext)
-
-func (apply RenderContextOptionFunc) Apply(r *RenderContext) {
-	apply(r)
-}
-
-func WithSiteFS(siteFS afero.Fs) RenderContextOptionFunc {
-	return func(r *RenderContext) {
-		r.siteFS = siteFS
-		r.templater = NewEvaluator(afero.NewIOFS(siteFS))
-	}
-}
-func WithFS(siteFS afero.Fs, themeFS afero.Fs, buildFS afero.Fs) RenderContextOptionFunc {
-	return func(r *RenderContext) {
-		WithSiteFS(siteFS)(r)
-		r.themeFS = themeFS
-		r.buildFS = buildFS
-	}
-}
-
-func NewRenderContext(opts ...RenderContextOption) *RenderContext {
-	rc := &RenderContext{
-		dirstack: []string{},
-	}
-	for _, opt := range opts {
-		opt.Apply(rc)
-	}
-	return rc
 }
 
 func (rc *RenderContext) Source(node tree.Node) ([]byte, error) {

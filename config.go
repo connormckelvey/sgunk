@@ -2,7 +2,10 @@ package ssg
 
 import (
 	"encoding/json"
+	"errors"
+	"os"
 
+	"github.com/spf13/afero"
 	"gopkg.in/yaml.v3"
 )
 
@@ -11,12 +14,32 @@ type MiddlewareConfig struct {
 	Extension string `yaml:"extension"`
 }
 
+type DirConfig interface {
+	GetDir() string
+}
+
 type SiteConfig struct {
 	Dir string `yaml:"dir"`
 }
 
+func (c *SiteConfig) GetDir() string {
+	return c.Dir
+}
+
 type ThemeConfig struct {
 	Dir string `yaml:"dir"`
+}
+
+func (c *ThemeConfig) GetDir() string {
+	return c.Dir
+}
+
+type BuildConfig struct {
+	Dir string `yaml:"dir"`
+}
+
+func (c *BuildConfig) GetDir() string {
+	return c.Dir
 }
 
 type ExtensionConfig struct {
@@ -42,10 +65,6 @@ func (ex *ExtensionConfig) UnmarshalYAML(value *yaml.Node) error {
 	return nil
 }
 
-type BuildConfig struct {
-	Dir string `yaml:"dir"`
-}
-
 type ProjectConfig struct {
 	Name  string            `yaml:"name"`
 	Site  SiteConfig        `yaml:"site"`
@@ -58,4 +77,23 @@ var configFiles = map[string]func([]byte, any) error{
 	"project.json": json.Unmarshal,
 	"project.yml":  yaml.Unmarshal,
 	"project.yaml": yaml.Unmarshal,
+}
+
+func loadConfigFile(projectFS afero.Fs) (*ProjectConfig, error) {
+	for name, unmarshal := range configFiles {
+		b, err := afero.ReadFile(projectFS, name)
+		if err != nil && os.IsNotExist(err) {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+		var c ProjectConfig
+		if err := unmarshal(b, &c); err != nil {
+			return nil, err
+		}
+		return &c, nil
+	}
+
+	return nil, errors.New("config file not found")
 }

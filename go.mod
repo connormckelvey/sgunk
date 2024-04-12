@@ -1,4 +1,4 @@
-module github.com/connormckelvey/website
+module github.com/connormckelvey/ssg
 
 go 1.22.1
 
