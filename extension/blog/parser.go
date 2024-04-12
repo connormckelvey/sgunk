@@ -1,4 +1,4 @@
-package parser
+package blog
 
 import (
 	"io/fs"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/connormckelvey/sgunk/parser"
 	"github.com/connormckelvey/sgunk/tree"
 )
 
@@ -33,18 +34,18 @@ func (pp *BlogEntryParser) Test(path string, entry fs.FileInfo) (bool, error) {
 	return hasPrefix && parts.Kind == "post", nil
 }
 
-func (pp *BlogEntryParser) Parse(path string, entry fs.FileInfo, context *ParserContext) (tree.Node, error) {
+func (pp *BlogEntryParser) Parse(path string, entry fs.FileInfo, context *parser.ParserContext) (tree.Node, error) {
 	if path == pp.root && entry.IsDir() {
-		return tree.NewBlogNode(path, pp.root), nil
+		return NewBlogNode(path, pp.root), nil
 	}
 	if entry.IsDir() {
-		return &tree.BlogCollectionNode{
+		return &BlogCollectionNode{
 			BaseNode: tree.NewBaseNode(path, true),
 		}, nil
 	}
 
 	var fm struct {
-		Post tree.BlogPostFrontMatter `yaml:"post"`
+		Post BlogPostFrontMatter `yaml:"post"`
 	}
 	if err := context.FrontMatter(path, &fm); err != nil {
 		return nil, err
@@ -62,7 +63,7 @@ func (pp *BlogEntryParser) Parse(path string, entry fs.FileInfo, context *Parser
 		createdAt = time.UnixMilli(ms)
 	}
 
-	node := tree.NewBlogPostNode(path, parts, createdAt)
+	node := NewBlogPostNode(path, parts, createdAt)
 	err := node.AddAttrs("post", BlogPostAttributes{
 		Title:     fm.Post.Title,
 		Tags:      fm.Post.Tags,

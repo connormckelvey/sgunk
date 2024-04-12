@@ -4,15 +4,13 @@ import (
 	"github.com/connormckelvey/sgunk/tree"
 )
 
+var defaultRenderer = &DefaultRenderer{}
+
 type DefaultRenderer struct {
 }
 
-func (r *DefaultRenderer) Test(node tree.Node) (bool, error) {
-	switch node.(type) {
-	case *tree.DefaultDir, *tree.DefaultPage, *tree.Site:
-		return true, nil
-	}
-	return false, nil
+func (r *DefaultRenderer) Kind() tree.NodeKind {
+	return tree.DefaultNodeKind
 }
 
 func (r *DefaultRenderer) openDefaultDir(node *tree.DefaultDir, context *RenderContext) error {

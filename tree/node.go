@@ -1,6 +1,13 @@
 package tree
 
+type NodeKind string
+
+func (nk NodeKind) String() string {
+	return string(nk)
+}
+
 type Node interface {
+	Kind() NodeKind
 	Path() string
 	IsDir() bool
 	Children() []Node

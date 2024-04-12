@@ -17,7 +17,7 @@ type Renderer struct {
 	siteFS    afero.Fs
 	themeFS   afero.Fs
 	buildFS   afero.Fs
-	renderers []EntryRenderer
+	renderers map[tree.NodeKind]EntryRenderer
 	templater *Templater
 	markdown  goldmark.Markdown
 }
@@ -34,7 +34,12 @@ func (apply RendererOptionFunc) Apply(p *Renderer) error {
 
 func WithEntryRenderers(renderers ...EntryRenderer) RendererOptionFunc {
 	return func(r *Renderer) error {
-		r.renderers = append(r.renderers, renderers...)
+		if r.renderers == nil {
+			r.renderers = make(map[tree.NodeKind]EntryRenderer)
+		}
+		for _, renderer := range renderers {
+			r.renderers[renderer.Kind()] = renderer
+		}
 		return nil
 	}
 }
@@ -102,36 +107,30 @@ func (r *Renderer) Render(site *tree.Site) error {
 }
 
 func (r *Renderer) render(root tree.Node, context *RenderContext) error {
-	for _, renderer := range r.renderers {
-		ok, err := renderer.Test(root)
-		if err != nil {
-			return err
-		}
-		if !ok {
-			continue
-		}
-
-		if err := renderer.Open(root, context); err != nil {
-			return err
-		}
-
-		for _, child := range root.Children() {
-			if err := r.render(child, context); err != nil {
-				return err
-			}
-		}
-
-		if currentFile := context.CurrentFile(); !root.IsDir() && currentFile != nil {
-			if err := r.renderCurrentFile(root, context); err != nil {
-				return err
-			}
-		}
-
-		if err := renderer.Close(root, context); err != nil {
-			return err
-		}
-		break
+	renderer, ok := r.renderers[root.Kind()]
+	if !ok {
+		renderer = defaultRenderer
 	}
+	if err := renderer.Open(root, context); err != nil {
+		return err
+	}
+
+	for _, child := range root.Children() {
+		if err := r.render(child, context); err != nil {
+			return err
+		}
+	}
+
+	if currentFile := context.CurrentFile(); !root.IsDir() && currentFile != nil {
+		if err := r.renderCurrentFile(root, context); err != nil {
+			return err
+		}
+	}
+
+	if err := renderer.Close(root, context); err != nil {
+		return err
+	}
+
 	return nil
 }
 

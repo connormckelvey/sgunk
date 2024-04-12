@@ -1,22 +1,23 @@
 package sgunk
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"path/filepath"
 
 	"github.com/connormckelvey/sgunk/parser"
 	"github.com/connormckelvey/sgunk/renderer"
-	"github.com/mitchellh/mapstructure"
 	"github.com/spf13/afero"
 )
 
 type Project struct {
-	config   *ProjectConfig
-	workDir  string
-	options  []ProjectOption
-	parser   *parser.Parser
-	renderer *renderer.Renderer
+	config     *ProjectConfig
+	workDir    string
+	options    []ProjectOption
+	parser     *parser.Parser
+	renderer   *renderer.Renderer
+	extensions map[string]Extension
 }
 
 type ProjectOption interface {
@@ -29,9 +30,24 @@ func (apply ProjectOptionFunc) Apply(p *Project) error {
 	return apply(p)
 }
 
+func WithExtensions(extensions ...Extension) ProjectOptionFunc {
+	return func(p *Project) error {
+		for _, ext := range extensions {
+			p.extensions[ext.Name()] = ext
+		}
+		return nil
+	}
+}
+
 func WithWorkDir(dir string) ProjectOptionFunc {
 	return func(p *Project) error {
 		p.workDir = dir
+
+		config, err := LoadConfigFile(afero.NewBasePathFs(afero.NewOsFs(), dir))
+		if err != nil {
+			return err
+		}
+		p.config = config
 		return nil
 	}
 }
@@ -68,9 +84,10 @@ func WithRendererOptions(opts ...renderer.RendererOption) ProjectOptionFunc {
 func New(opts ...ProjectOption) *Project {
 
 	return &Project{
-		options:  opts,
-		parser:   parser.New(),
-		renderer: renderer.New(),
+		options:    opts,
+		parser:     parser.New(),
+		renderer:   renderer.New(),
+		extensions: make(map[string]Extension),
 	}
 }
 
@@ -134,27 +151,13 @@ func (p *Project) Generate() error {
 	}
 
 	for _, use := range p.config.Uses {
-		switch use.Name {
-		case "blog":
-			var config struct {
-				Path string `mapstructure:"path"`
-			}
-			err := mapstructure.Decode(use.Config, &config)
-			if err != nil {
-				return err
-			}
-			if err := parser.WithEntryParsers(
-				parser.NewBlogEntryParser(config.Path),
-			)(p.parser); err != nil {
-				return err
-			}
-
-			// TODO no need to add more than one blog renderer
-			if err := renderer.WithEntryRenderers(
-				&renderer.BlogRenderer{},
-			)(p.renderer); err != nil {
-				return err
-			}
+		ext, ok := p.extensions[use.Name]
+		if !ok {
+			return fmt.Errorf("no known extension '%s'", use.Name)
+		}
+		err := ext.Register(p, use.Config)
+		if err != nil {
+			return err
 		}
 	}
 

@@ -10,7 +10,7 @@ import (
 
 func TestProject(t *testing.T) {
 	projectFS := afero.NewBasePathFs(afero.NewOsFs(), "testdata/project1")
-	config, err := loadConfigFile(projectFS)
+	config, err := LoadConfigFile(projectFS)
 	require.NoError(t, err)
 
 	project := New(

@@ -79,7 +79,7 @@ var configFiles = map[string]func([]byte, any) error{
 	"project.yaml": yaml.Unmarshal,
 }
 
-func loadConfigFile(projectFS afero.Fs) (*ProjectConfig, error) {
+func LoadConfigFile(projectFS afero.Fs) (*ProjectConfig, error) {
 	for name, unmarshal := range configFiles {
 		b, err := afero.ReadFile(projectFS, name)
 		if err != nil && os.IsNotExist(err) {

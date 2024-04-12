@@ -1,4 +1,4 @@
 version: v0.1
 uses:
-  - extension: blog
+  - extension: github.com/connormckelvey/sgunk/extension/blog
     path: blog

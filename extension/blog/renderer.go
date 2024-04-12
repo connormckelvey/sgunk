@@ -1,24 +1,21 @@
-package renderer
+package blog
 
 import (
 	"path/filepath"
 	"time"
 
+	"github.com/connormckelvey/sgunk/renderer"
 	"github.com/connormckelvey/sgunk/tree"
 )
 
 type BlogRenderer struct {
 }
 
-func (r *BlogRenderer) Test(node tree.Node) (bool, error) {
-	switch node.(type) {
-	case *tree.BlogNode, *tree.BlogCollectionNode, *tree.BlogPostNode:
-		return true, nil
-	}
-	return false, nil
+func (r *BlogRenderer) Kind() tree.NodeKind {
+	return BlogKind
 }
 
-func (f *BlogRenderer) openBlogNode(node *tree.BlogNode, context *RenderContext) error {
+func (f *BlogRenderer) openBlogNode(node *BlogNode, context *renderer.RenderContext) error {
 	if err := context.MkdirAll(node.Root, 0755); err != nil {
 		return err
 	}
@@ -26,12 +23,12 @@ func (f *BlogRenderer) openBlogNode(node *tree.BlogNode, context *RenderContext)
 	return nil
 }
 
-func (*BlogRenderer) closeBlogNode(_ *tree.BlogNode, context *RenderContext) error {
+func (*BlogRenderer) closeBlogNode(_ *BlogNode, context *renderer.RenderContext) error {
 	context.PopDir()
 	return nil
 }
 
-func (f *BlogRenderer) openBlogPostNode(node *tree.BlogPostNode, context *RenderContext) error {
+func (f *BlogRenderer) openBlogPostNode(node *BlogPostNode, context *renderer.RenderContext) error {
 	datePath := time.Now().Format("2006/01/02")
 	if err := context.MkdirAll(datePath, 0755); err != nil {
 		return err
@@ -45,32 +42,32 @@ func (f *BlogRenderer) openBlogPostNode(node *tree.BlogPostNode, context *Render
 	return nil
 }
 
-func (f *BlogRenderer) closeBlogPostNode(_ *tree.BlogPostNode, context *RenderContext) error {
+func (f *BlogRenderer) closeBlogPostNode(_ *BlogPostNode, context *renderer.RenderContext) error {
 	popped := context.PopFile()
 	return popped.Close()
 }
 
 type PropsBuilder func(props map[string]any)
 
-func (r *BlogRenderer) Open(node tree.Node, context *RenderContext) error {
+func (r *BlogRenderer) Open(node tree.Node, context *renderer.RenderContext) error {
 	switch n := node.(type) {
-	case *tree.BlogNode:
+	case *BlogNode:
 		return r.openBlogNode(n, context)
-	case *tree.BlogCollectionNode:
+	case *BlogCollectionNode:
 		return nil
-	case *tree.BlogPostNode:
+	case *BlogPostNode:
 		return r.openBlogPostNode(n, context)
 	}
 	return nil
 }
 
-func (r *BlogRenderer) Close(node tree.Node, context *RenderContext) error {
+func (r *BlogRenderer) Close(node tree.Node, context *renderer.RenderContext) error {
 	switch n := node.(type) {
-	case *tree.BlogNode:
+	case *BlogNode:
 		return r.closeBlogNode(n, context)
-	case *tree.BlogCollectionNode:
+	case *BlogCollectionNode:
 		return nil
-	case *tree.BlogPostNode:
+	case *BlogPostNode:
 		return r.closeBlogPostNode(n, context)
 	}
 	return nil
