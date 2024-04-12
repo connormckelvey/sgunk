@@ -85,8 +85,7 @@ func (p *Project) getConfigDir(c DirConfig, defaultDir string) (string, afero.Fs
 	if d := c.GetDir(); d != "" {
 		dir = d
 	}
-	dir = filepath.Join(p.workDir, defaultDir)
-	fsys := afero.NewBasePathFs(afero.NewOsFs(), dir)
+	fsys := afero.NewBasePathFs(afero.NewOsFs(), filepath.Join(p.workDir, dir))
 	return dir, fsys
 }
 
@@ -160,7 +159,7 @@ func (p *Project) Generate() error {
 	}
 
 	if err := parser.WithEntryParsers(
-		&parser.DefaultPageParser{},
+		&parser.DefaultParser{},
 	)(p.parser); err != nil {
 		return err
 	}

@@ -1,6 +1,11 @@
-package tree
+package util
 
-import "strings"
+import (
+	"testing"
+
+	"github.com/davecgh/go-spew/spew"
+	"github.com/stretchr/testify/assert"
+)
 
 type PageFrontMatter struct {
 	Title    string            `yaml:"title" mapstructure:"title"`
@@ -24,34 +29,9 @@ type PageLinksValue struct {
 	As   *string `yaml:"as" mapstructure:"as"`
 }
 
-type PageNameParts struct {
-	Raw   string
-	Ext   string
-	Kind  string
-	Slug  string
-	Extra []string
-}
+func TestMarshalMap(t *testing.T) {
+	v, err := MarshalMap(&PageFrontMatter{Title: "foo", Template: "asd"})
+	assert.NoError(t, err)
 
-func GetEntryNameParts(name string) (PageNameParts, bool) {
-	parts := strings.Split(name, ".")
-	if len(parts) < 2 {
-		return PageNameParts{}, false
-	}
-
-	p := PageNameParts{
-		Raw:  name,
-		Ext:  parts[len(parts)-1],
-		Kind: parts[0],
-		Slug: parts[0],
-	}
-
-	if len(parts) > 2 {
-		p.Slug = parts[len(parts)-2]
-	}
-
-	if len(parts) > 3 {
-		p.Extra = parts[1 : len(parts)-2]
-	}
-
-	return p, true
+	spew.Dump(v)
 }

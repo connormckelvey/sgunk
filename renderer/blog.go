@@ -1,11 +1,9 @@
 package renderer
 
 import (
-	"bytes"
 	"path/filepath"
 	"time"
 
-	"github.com/adrg/frontmatter"
 	"github.com/connormckelvey/ssg/tree"
 )
 
@@ -18,30 +16,6 @@ func (r *BlogRenderer) Test(node tree.Node) (bool, error) {
 		return true, nil
 	}
 	return false, nil
-}
-
-func (r *BlogRenderer) Props(node tree.Node, context *RenderContext) (map[string]any, error) {
-	if node.IsDir() {
-		return nil, nil
-	}
-	source, err := context.Source(node)
-	if err != nil {
-		return nil, err
-	}
-
-	var fm struct {
-		Post tree.BlogPostFrontMatter `yaml:"post"`
-	}
-	if _, err := frontmatter.Parse(bytes.NewReader(source), &fm); err != nil {
-		return nil, err
-	}
-	return map[string]any{
-		"post": map[string]any{
-			"createdAt": node.(*tree.BlogPostNode).CreatedAt,
-			"title":     fm.Post.Title,
-			"tags":      fm.Post.Tags,
-		},
-	}, nil
 }
 
 func (f *BlogRenderer) openBlogNode(node *tree.BlogNode, context *RenderContext) error {

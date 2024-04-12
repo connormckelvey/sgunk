@@ -10,7 +10,6 @@ page:
 ---
 
 
-**Published At:** <% post.createdAt %>
 
 something about <% post.title %>
 

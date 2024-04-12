@@ -1,7 +1,12 @@
 ---
 template: main.html
 ---
+
 <article>
+    <p>
+        <strong>Published At:</strong> <% post.createdAt %>
+
+    </p>
     <h1><% post.title %></h1>
     <% $outlet %>
 </article>

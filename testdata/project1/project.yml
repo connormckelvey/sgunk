@@ -1,4 +1,4 @@
-version: v1
+version: v0.1
 uses:
   - extension: blog
     path: blog

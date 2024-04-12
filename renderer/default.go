@@ -1,34 +1,10 @@
 package renderer
 
 import (
-	"bytes"
-
-	"github.com/adrg/frontmatter"
 	"github.com/connormckelvey/ssg/tree"
 )
 
 type DefaultRenderer struct {
-}
-
-func (r *DefaultRenderer) Props(node tree.Node, context *RenderContext) (map[string]any, error) {
-	if node.IsDir() {
-		return nil, nil
-	}
-	source, err := context.Source(node)
-	if err != nil {
-		return nil, err
-	}
-
-	var fm tree.PageFrontMatter
-	if _, err := frontmatter.Parse(bytes.NewReader(source), &fm); err != nil {
-		return nil, err
-	}
-	return map[string]any{
-		"title":    fm.Title,
-		"meta":     fm.Meta,
-		"links":    fm.Links,
-		"template": fm.Template,
-	}, nil
 }
 
 func (r *DefaultRenderer) Test(node tree.Node) (bool, error) {

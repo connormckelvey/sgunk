@@ -3,11 +3,9 @@ package renderer
 import (
 	"bytes"
 	"io"
-	"maps"
 
 	"github.com/adrg/frontmatter"
 	"github.com/connormckelvey/ssg/tree"
-	"github.com/connormckelvey/ssg/util"
 	"github.com/spf13/afero"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/extension"
@@ -124,7 +122,7 @@ func (r *Renderer) render(root tree.Node, context *RenderContext) error {
 		}
 
 		if currentFile := context.CurrentFile(); !root.IsDir() && currentFile != nil {
-			if err := r.renderCurrentFile(root, context, renderer); err != nil {
+			if err := r.renderCurrentFile(root, context); err != nil {
 				return err
 			}
 		}
@@ -137,50 +135,37 @@ func (r *Renderer) render(root tree.Node, context *RenderContext) error {
 	return nil
 }
 
-func (r *Renderer) renderCurrentFile(root tree.Node, context *RenderContext, renderer EntryRenderer) error {
+func (r *Renderer) renderCurrentFile(root tree.Node, context *RenderContext) error {
+	// TODO .Props method on renderer makes no sense
+	// It shouldn't be a method at all. Just something
+	// done during parsing and attached to the node.
+	// I like the term "Attributes"
+	// https://github.com/darccio/mergo
+	// Want to find a way to make parsers, or some other type composable
+	// so that multiple things can attach their own props.
+	// Page props, Post props
 	source, err := context.Source(root)
 	if err != nil {
 		return err
 	}
 
 	var fm struct {
-		Page tree.PageFrontMatter `yaml:"page"`
+		Page tree.PageFrontMatter `yaml:"page" mapstructure:"page"`
 	}
 	content, err := frontmatter.Parse(bytes.NewReader(source), &fm)
 	if err != nil {
 		return err
 	}
 
-	var metaProps []map[string]any
-	for _, meta := range fm.Page.Meta {
-		m, err := util.MarshalMap(meta)
-		if err != nil {
-			return err
-		}
-		metaProps = append(metaProps, m)
-	}
-
-	var linkProps []map[string]any
-	for _, link := range fm.Page.Links {
-		l, err := util.MarshalMap(link)
-		if err != nil {
-			return err
-		}
-		linkProps = append(linkProps, l)
-	}
-	props := map[string]any{
-		"page": map[string]any{
-			"meta":     metaProps,
-			"links":    linkProps,
-			"template": fm.Page.Template,
-			"title":    fm.Page.Title,
-		},
-	}
-	p, err := renderer.Props(root, context)
+	nodeAttrs, err := root.Attributes()
 	if err != nil {
 		return err
 	}
-	maps.Copy(props, p)
+
+	props := make(map[string]any)
+	for k, v := range nodeAttrs {
+		props[k] = v
+	}
 
 	var templated bytes.Buffer
 	if err := r.templater.Render(bytes.NewReader(content), root.Path(), props, &templated); err != nil {

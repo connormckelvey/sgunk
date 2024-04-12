@@ -1,11 +1,8 @@
 package parser
 
 import (
-	"errors"
-	"io/fs"
 	"log"
 	"path/filepath"
-	"sync"
 
 	"github.com/connormckelvey/ssg/tree"
 	"github.com/spf13/afero"
@@ -13,7 +10,6 @@ import (
 
 type Parser struct {
 	options []ParserOption
-	once    sync.Once
 	siteFS  afero.Fs
 	parsers []EntryParser
 }
@@ -59,14 +55,17 @@ func (p *Parser) Parse() (*tree.Site, error) {
 	site := &tree.Site{
 		BaseNode: tree.NewBaseNode("", true),
 	}
-
-	if err := p.parse(".", site); err != nil {
+	context := &ParserContext{
+		siteFS:  p.siteFS,
+		sources: make(map[string][]byte),
+	}
+	if err := p.parse(".", site, context); err != nil {
 		return nil, err
 	}
 	return site, nil
 }
 
-func (p *Parser) parse(dir string, root tree.Node) error {
+func (p *Parser) parse(dir string, root tree.Node, context *ParserContext) error {
 	entries, err := afero.ReadDir(p.siteFS, dir)
 	if err != nil {
 		return err
@@ -74,7 +73,6 @@ func (p *Parser) parse(dir string, root tree.Node) error {
 
 	for _, entry := range entries {
 		path := filepath.Join(dir, entry.Name())
-
 		// find parser
 		var parser EntryParser
 		for _, pp := range p.parsers {
@@ -93,7 +91,7 @@ func (p *Parser) parse(dir string, root tree.Node) error {
 			continue
 		}
 
-		n, err := parser.Parse(path, entry)
+		n, err := parser.Parse(path, entry, context)
 		if err != nil {
 			return err
 		}
@@ -102,33 +100,30 @@ func (p *Parser) parse(dir string, root tree.Node) error {
 		}
 
 		root.AppendChild(n)
+
 		if entry.IsDir() {
-			if err := p.parse(path, n); err != nil {
+			if err := p.parse(path, n, context); err != nil {
 				return err
 			}
+			continue
+		}
+
+		var fm struct {
+			Page tree.PageFrontMatter `yaml:"page"`
+		}
+		if err := context.FrontMatter(path, &fm); err != nil {
+			return err
+		}
+
+		err = n.AddAttrs("page", PageAttributes{
+			Title:    fm.Page.Title,
+			Meta:     fm.Page.Meta,
+			Links:    fm.Page.Links,
+			Template: fm.Page.Template,
+		})
+		if err != nil {
+			return err
 		}
 	}
 	return nil
-}
-
-type DefaultPageParser struct {
-}
-
-func (pp *DefaultPageParser) Test(path string, entry fs.FileInfo) (bool, error) {
-	return true, nil
-}
-
-func (pp *DefaultPageParser) Parse(path string, entry fs.FileInfo) (tree.Node, error) {
-	name := filepath.Base(path)
-
-	if entry.IsDir() {
-		return &tree.DefaultDir{
-			BaseNode: tree.NewBaseNode(path, true),
-		}, nil
-	}
-	parts, ok := tree.GetEntryNameParts(name)
-	if !ok {
-		return nil, errors.New("shouldnt have passed Test")
-	}
-	return tree.NewDefaultPage(path, parts), nil
 }
